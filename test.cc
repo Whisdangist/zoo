@@ -348,28 +348,22 @@ string process_candidate(__uint128_t candidate) {
 
     // 计算地址
     public_key = vector<unsigned char>(public_key.begin() + 1, public_key.end());
-    print_hash(public_key.data(), 64);
     vector<unsigned char> primitive_addr = keccak256(public_key);
-    print_hash(primitive_addr.data(), 32);
-
     primitive_addr = vector<unsigned char>(primitive_addr.end() - 20, primitive_addr.end());
     primitive_addr.insert(primitive_addr.begin(), 0x41); // 添加地址前缀
     vector<unsigned char> digest = sha256(sha256(primitive_addr));
     vector<unsigned char> checksum_tron = vector<unsigned char>(digest.begin(), digest.begin() + 4);
     primitive_addr.insert(primitive_addr.end(), checksum_tron.begin(), checksum_tron.end());
     string address = EncodeBase58(primitive_addr);
-    cout << "Address: " << address << endl;
     
     if (address == target_address) {
         return mnemonic;
     }
 
-    return "1";
+    return "";
 }
 
-int main() {
-    cout << "Hello, World!" << endl;
-
+int solve() {    
     __uint128_t pre_entropy = 0;
     istringstream words_stream(pre_words_str);
     string word;
@@ -385,11 +379,26 @@ int main() {
         string result = process_candidate(pre_entropy | c);
         if (result.size() > 0) {
             cout << "\nFound words: " << result << endl;
-            return 0;
+            return 1;
+        }
+        if (c % 1000 == 0) {
+            cout << "Processed " << c << " candidates." << endl;
         }
     }
-
     cout << "No matching words found." << endl;
+    return 0;
+}
+
+
+int main() {
+    cout << "Hello, World!" << endl;
+
+    auto start = std::chrono::high_resolution_clock::now();    
+    solve();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Task executed in " << duration.count() << " milliseconds." << std::endl;
+
     return 0;
 }
 
