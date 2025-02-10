@@ -363,7 +363,26 @@ string process_candidate(__uint128_t candidate) {
     return "";
 }
 
-int solve() {    
+std::atomic<bool> stop_threads(false);
+
+int worker(__uint128_t pre_entropy, int worker_id) {
+    for (int c = 0; c < (1 << 14); ++c) {
+        if (stop_threads) return 0;
+        string result = process_candidate(pre_entropy | (worker_id << 14) | c);
+        if (result.size() > 0) {
+            cout << "\nFound words: " << result << endl;
+            stop_threads = true;
+            return 1;
+        }
+        if (c % 1000 == 0) {
+            cout << "Processed " << c << " candidates." << endl;
+        }
+    }
+    cout << "No matching words found." << endl;
+    return 0;
+}
+
+void solve() {    
     __uint128_t pre_entropy = 0;
     istringstream words_stream(pre_words_str);
     string word;
@@ -375,20 +394,17 @@ int solve() {
     }
     pre_entropy <<= 18;
 
-    for (int c = 0; c < (1 << 18); ++c) {
-        string result = process_candidate(pre_entropy | c);
-        if (result.size() > 0) {
-            cout << "\nFound words: " << result << endl;
-            return 1;
-        }
-        if (c % 1000 == 0) {
-            cout << "Processed " << c << " candidates." << endl;
-        }
+    vector<thread> threads;
+    int num_threads = 16;
+    for (int i = 0; i < num_threads; ++i) {
+        threads.push_back(thread(worker, pre_entropy, i));
     }
-    cout << "No matching words found." << endl;
-    return 0;
-}
 
+    for (auto& t : threads) {
+        t.join();
+    }
+    std::cout << "All threads have completed." << std::endl;
+}
 
 int main() {
     cout << "Hello, World!" << endl;
@@ -397,7 +413,7 @@ int main() {
     solve();
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "Task executed in " << duration.count() << " milliseconds." << std::endl;
+    std::cout << "Task executed in " << duration.count() / 1000 << " seconds." << std::endl;
 
     return 0;
 }
