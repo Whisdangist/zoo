@@ -6,6 +6,7 @@
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/obj_mac.h>
+#include <secp256k1.h>
 #include "keccak256.h"
 #include "base58.h"
 using namespace std;
@@ -96,55 +97,34 @@ BIGNUM* vector_to_bignum(const vector<unsigned char>& v) {
 }
 
 // 计算 SECP256K1 公钥
-vector<unsigned char> private_key_to_public_key(const vector<unsigned char>& private_key, const bool is_compressed = true) {
-    // 创建 SECP256K1 曲线的 EC_GROUP 对象
-    EC_GROUP* group = EC_GROUP_new_by_curve_name(NID_secp256k1);
-    if (group == nullptr) {
-        cerr << "Failed to create EC group" << endl;
-        return {};
+std::vector<unsigned char> private_key_to_public_key(const std::vector<unsigned char>& private_key, const bool is_compressed = true) {
+    // 初始化libsecp256k1上下文
+    secp256k1_context* ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+
+    // 检查私钥长度是否正确（32字节）
+    if (private_key.size() != 32) {
+        secp256k1_context_destroy(ctx);
+        throw std::invalid_argument("Private key must be 32 bytes long.");
     }
 
-    // 创建一个 EC_POINT 用来存储公钥
-    EC_POINT* public_key_point = EC_POINT_new(group);
-    if (public_key_point == nullptr) {
-        cerr << "Failed to create EC point" << endl;
-        EC_GROUP_free(group);
-        return {};
+    // 创建公钥变量
+    secp256k1_pubkey pubkey;
+
+    // 从私钥生成公钥
+    if (!secp256k1_ec_pubkey_create(ctx, &pubkey, private_key.data())) {
+        secp256k1_context_destroy(ctx);
+        throw std::runtime_error("Failed to create public key from private key.");
     }
 
-    // 将私钥转换为 BIGNUM
-    BIGNUM* priv_bn = vector_to_bignum(private_key);
-    if (priv_bn == nullptr) {
-        cerr << "Failed to convert private key to BIGNUM" << endl;
-        EC_POINT_free(public_key_point);
-        EC_GROUP_free(group);
-        return {};
-    }
+    // 根据是否压缩选择公钥输出格式
+    size_t pubkey_len = is_compressed ? 33 : 65;
+    std::vector<unsigned char> public_key(pubkey_len);
 
-    // 计算公钥点
-    if (EC_POINT_mul(group, public_key_point, priv_bn, NULL, NULL, NULL) != 1) {
-        cerr << "Failed to calculate public key" << endl;
-        BN_free(priv_bn);
-        EC_POINT_free(public_key_point);
-        EC_GROUP_free(group);
-        return {};
-    }
+    // 将公钥序列化为字节数组
+    secp256k1_ec_pubkey_serialize(ctx, public_key.data(), &pubkey_len, &pubkey, is_compressed ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED);
 
-    int public_key_length = is_compressed ? 33 : 65;
-    point_conversion_form_t point_conversion_form = is_compressed ? POINT_CONVERSION_COMPRESSED : POINT_CONVERSION_UNCOMPRESSED;
-    vector<unsigned char> public_key(public_key_length);
-    if (EC_POINT_point2oct(group, public_key_point, point_conversion_form, public_key.data(), public_key.size(), NULL) == 0) {
-        cerr << "Failed to convert public key to octet form" << endl;
-        BN_free(priv_bn);
-        EC_POINT_free(public_key_point);
-        EC_GROUP_free(group);
-        return {};
-    }
-
-    // 清理资源
-    BN_free(priv_bn);
-    EC_POINT_free(public_key_point);
-    EC_GROUP_free(group);
+    // 清理上下文
+    secp256k1_context_destroy(ctx);
 
     return public_key;
 }
