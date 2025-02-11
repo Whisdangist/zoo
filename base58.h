@@ -1,57 +1,58 @@
-#include <bits/stdc++.h>
+#include <vector>
+#include <string>
+#include <cassert>
+
 using namespace std;
 
-// Base58 字符集
 const char pszBase58[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
-// Base58 编码函数
-string EncodeBase58(const vector<unsigned char>& input)
-{
-    // Skip & count leading zeroes.
+string EncodeBase58(const vector<unsigned char>& input) {
+    // 计算前导零的数量
     int zeroes = 0;
-    int length = 0;
-    vector<unsigned char> data = input;
-
-    // 计算前导零字节数
-    while (data.size() > 0 && data[0] == 0) {
-        data.erase(data.begin());  // 去除首个元素
-        zeroes++;
+    const int input_size = input.size();
+    while (zeroes < input_size && input[zeroes] == 0) {
+        ++zeroes;
     }
 
-    // 计算足够的空间进行 Base58 表示
-    int size = data.size() * 138 / 100 + 1; // log(256) / log(58), 向上取整
-    vector<unsigned char> b58(size);
+    // 计算足够的空间
+    const int data_size = input_size - zeroes;
+    const int size = data_size * 138 / 100 + 1; // log(256)/log(58) ≈ 138/100
+    vector<unsigned char> b58(size, 0); // 初始化为全0
 
-    // 处理字节数据
-    while (data.size() > 0) {
-        int carry = data[0];
+    int length = 0; // 当前b58数组的有效长度
+
+    // 处理每一个字节
+    for (int idx = zeroes; idx < input_size; ++idx) {
+        int carry = input[idx];
         int i = 0;
-        
-        // 将 b58 * 256 + 当前字节
-        for (auto it = b58.rbegin(); (carry != 0 || i < length) && it != b58.rend(); ++it, ++i) {
-            carry += 256 * (*it);
-            *it = carry % 58;
+        int j = size - 1;
+
+        // 处理b58数组，从后往前
+        while (j >= 0 && (carry != 0 || i < length)) {
+            carry += 256 * b58[j];
+            b58[j] = carry % 58;
             carry /= 58;
+            --j;
+            ++i;
         }
 
         assert(carry == 0);
-        length = i;
-        data.erase(data.begin());  // 移除第一个元素
+        length = i; // 更新有效长度
     }
 
-    // 跳过 Base58 结果中的前导零字节
+    // 跳过前导零
     auto it = b58.begin() + (size - length);
-    while (it != b58.end() && *it == 0)
+    while (it != b58.end() && *it == 0) {
         ++it;
+    }
 
-    // 将结果转化为字符串
+    // 构建结果字符串
     string str;
     str.reserve(zeroes + (b58.end() - it));
-    str.assign(zeroes, '1');  // 前导零用 '1' 来表示
+    str.assign(zeroes, '1'); // 前导零转换为'1'
 
-    // 将 Base58 数字转化为字符
-    while (it != b58.end()) {
-        str += pszBase58[*(it++)];
+    for (; it != b58.end(); ++it) {
+        str += pszBase58[*it];
     }
 
     return str;
