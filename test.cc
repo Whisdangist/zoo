@@ -33,7 +33,7 @@ vector<string> get_wordlist() {
 
 const vector<string> BIP39_WORDLIST = get_wordlist();
 const string pre_words_str = "dentist gauge whisper cattle lemon pink benefit ship subject state";
-const string target_address = "TEyy2fr2xMYwwsZUxmNx7HD4LT9WhEorPP";
+const vector<unsigned char> decoded_target_address = DecodeBase58("TEyy2fr2xMYwwsZUxmNx7HD4LT9WhEorPP");
 
 
 vector<unsigned char> int2bytes(__uint128_t entropy) {
@@ -71,36 +71,6 @@ struct KECCAK1600_CTX {
     unsigned char buf[1600 / 8 - 32];
     unsigned char pad;
 };
-
-// // 计算 Keccak-256 哈希
-// vector<unsigned char> keccak256(const vector<unsigned char>& data) {
-//     vector<unsigned char> hash(EVP_MAX_MD_SIZE);  // 256-bit hash
-//     unsigned int len = 0;
-
-//     // OpenSSL 不直接提供 keccak256，所以这里用 SHA3 算法
-//     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-//     EVP_DigestInit_ex(ctx, EVP_sha3_256(), nullptr);
-    
-//     KECCAK1600_CTX* keccak_ctx = reinterpret_cast<KECCAK1600_CTX*>((reinterpret_cast<EVP_MD_CTX_t*>(ctx))->md_data);
-//     // cout << keccak_ctx->pad << endl;
-//     keccak_ctx->pad = 0x01;
-
-//     EVP_DigestUpdate(ctx, data.data() + 1, data.size() - 1);
-//     EVP_DigestFinal_ex(ctx, hash.data(), &len);
-
-//     EVP_MD_CTX_free(ctx);
-//     hash.resize(len);  // Resize the hash to the correct length
-//     return hash;
-// }
-
-// vector<unsigned char> keccak256(const vector<unsigned char>& data) {
-//     sha3_context ctx;
-//     sha3_Init256(&ctx);
-//     sha3_SetFlags(&ctx, SHA3_FLAGS_KECCAK);  // 强制使用 Keccak 填充（0x01）
-//     sha3_Update(&ctx, data.data(), data.size());
-//     const uint8_t* hash = sha3_Finalize(const_cast<void*>(reinterpret_cast<const void*>(&ctx)));
-//     return vector<unsigned char>(hash, hash + 32);
-// }
 
 vector<unsigned char> pbkdf2_hmac(string mnemonic) {
     const unsigned char salt[] = "mnemonic";
@@ -294,14 +264,8 @@ string process_candidate(__uint128_t candidate) {
     // 计算地址
     public_key = vector<unsigned char>(public_key.begin() + 1, public_key.end());
     vector<unsigned char> primitive_addr = keccak256(public_key);
-    primitive_addr = vector<unsigned char>(primitive_addr.end() - 20, primitive_addr.end());
-    primitive_addr.insert(primitive_addr.begin(), 0x41); // 添加地址前缀
-    vector<unsigned char> digest = sha256(sha256(primitive_addr));
-    vector<unsigned char> checksum_tron = vector<unsigned char>(digest.begin(), digest.begin() + 4);
-    primitive_addr.insert(primitive_addr.end(), checksum_tron.begin(), checksum_tron.end());
-    string address = EncodeBase58(primitive_addr);
-    
-    if (address == target_address) {
+
+    if (vector<unsigned char>(primitive_addr.end() - 20, primitive_addr.end()) == vector<unsigned char>(decoded_target_address.begin() + 1, decoded_target_address.end() - 4)) {
         return mnemonic;
     }
 
