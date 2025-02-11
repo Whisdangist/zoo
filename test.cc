@@ -55,24 +55,6 @@ vector<unsigned char> sha256(const vector<unsigned char> &data) {
     return hash;
 }
 
-struct EVP_MD_CTX_t {
-    const EVP_MD *digest;
-    ENGINE *engine;
-    unsigned long flags;
-    void *md_data;
-    EVP_PKEY_CTX *pctx;
-    int(*update) (EVP_MD_CTX *ctx, const void *data, size_t count);
-};
-
-struct KECCAK1600_CTX {
-    uint64_t A[5][5];
-    size_t block_size;
-    size_t md_size;
-    size_t num;
-    unsigned char buf[1600 / 8 - 32];
-    unsigned char pad;
-};
-
 vector<unsigned char> pbkdf2_hmac(string mnemonic) {
     const unsigned char salt[] = "mnemonic";
     const int iterations = 2048;
@@ -254,10 +236,10 @@ string process_candidate(__uint128_t candidate) {
 
 std::atomic<bool> stop_threads(false);
 
-int worker(__uint128_t pre_entropy, int worker_id) {
-    for (int c = 0; c < (1 << 15); ++c) {
+int worker(__uint128_t pre_entropy, int worker_id, int bits = 3) {
+    for (int c = 0; c < (1 << (18 - bits)); ++c) {
         if (stop_threads) return 0;
-        string result = process_candidate(pre_entropy | (worker_id << 15) | c);
+        string result = process_candidate(pre_entropy | (worker_id << (18 - bits)) | c);
         if (result.size() > 0) {
             cout << "\nFound words: " << result << endl;
             stop_threads = true;
@@ -271,6 +253,8 @@ int worker(__uint128_t pre_entropy, int worker_id) {
     return 0;
 }
 
+// #define TEST
+
 void solve() {    
     __uint128_t pre_entropy = 0;
     istringstream words_stream(pre_words_str);
@@ -283,15 +267,21 @@ void solve() {
     }
     pre_entropy <<= 18;
 
-    vector<thread> threads;
-    int num_threads = 8;
-    for (int i = 0; i < num_threads; ++i) {
-        threads.push_back(thread(worker, pre_entropy, i));
-    }
+    #ifndef TEST
+        vector<thread> threads;
+        int num_bits = 3;
+        for (int i = 0; i < (1 << num_bits); ++i) {
+            threads.push_back(thread(worker, pre_entropy, i, num_bits));
+        }
+        for (auto& t : threads) {
+            t.join();
+        }
+    #endif
 
-    for (auto& t : threads) {
-        t.join();
-    }
+    #ifdef TEST
+        worker(pre_entropy, 0, 8);
+    #endif
+
     std::cout << "All threads have completed." << std::endl;
 }
 
