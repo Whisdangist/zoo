@@ -33,7 +33,7 @@ vector<string> get_wordlist() {
 }
 
 const vector<string> BIP39_WORDLIST = get_wordlist();
-const string pre_words_str = "dentist gauge whisper cattle lemon pink benefit ship subject state";
+const string pre_words_str = "dentist gauge whisper cattle lemon pink benefit ship subject";
 const vector<unsigned char> decoded_target_address = DecodeBase58("TEyy2fr2xMYwwsZUxmNx7HD4LT9WhEorPP");
 
 
@@ -214,9 +214,10 @@ string process_candidate(__uint128_t candidate) {
     unsigned char checksum = sha256(vector<unsigned char>(entropy_bytes.data(), entropy_bytes.data() + 16))[0] >> 4;;
 
     // 计算助记词
+    string word10 = BIP39_WORDLIST[(candidate >> 18) & 0x7FF];
     string word11 = BIP39_WORDLIST[(candidate >> 7) & 0x7FF];
     string word12 = BIP39_WORDLIST[((candidate & 0x7F) << 4) | checksum];
-    string mnemonic = pre_words_str + " " + word11 + " " + word12;
+    string mnemonic = pre_words_str + " " + word10 + " " + word11 + " " + word12;
 
     // 计算派生密钥
     vector<unsigned char> seed = pbkdf2_hmac(mnemonic);
@@ -237,9 +238,9 @@ string process_candidate(__uint128_t candidate) {
 std::atomic<bool> stop_threads(false);
 
 int worker(__uint128_t pre_entropy, int worker_id, int bits = 3) {
-    for (int c = 0; c < (1 << (18 - bits)); ++c) {
+    for (int c = 0; c < (1 << (29 - bits)); ++c) {
         if (stop_threads) return 0;
-        string result = process_candidate(pre_entropy | (worker_id << (18 - bits)) | c);
+        string result = process_candidate(pre_entropy | (worker_id << (29 - bits)) | c);
         if (result.size() > 0) {
             cout << "\nFound words: " << result << endl;
             stop_threads = true;
@@ -265,7 +266,7 @@ void solve() {
         pre_entropy <<= 11;
         pre_entropy |= idx;
     }
-    pre_entropy <<= 18;
+    pre_entropy <<= 29;
 
     #ifndef TEST
         vector<thread> threads;
