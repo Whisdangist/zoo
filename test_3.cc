@@ -235,9 +235,12 @@ string process_candidate(__uint128_t candidate) {
     return "";
 }
 
+const int process_bits = 3;
+const int thread_bits = 8;
 std::atomic<bool> stop_threads(false);
 
 int worker(__uint128_t pre_entropy, int worker_id, int bits = 3) {
+    int thread_id = worker_id >> thread_bits;
     for (int c = 0; c < (1 << (29 - bits)); ++c) {
         if (stop_threads) return 0;
         string result = process_candidate(pre_entropy | (worker_id << (29 - bits)) | c);
@@ -247,7 +250,7 @@ int worker(__uint128_t pre_entropy, int worker_id, int bits = 3) {
             return 1;
         }
         if (c % 1000 == 0) {
-            cout << "Processed " << c << " candidates." << endl;
+            cout << "[" << thread_id << "] " << "Processed " << c << " candidates." << endl;
         }
     }
     cout << "No matching words found." << endl;
@@ -270,8 +273,6 @@ void solve(int process_id = 0) {
 
     #ifndef TEST
         vector<thread> threads;
-        int process_bits = 3;
-        int thread_bits = 8;
         for (int thread_id = 0; thread_id < (1 << thread_bits); ++thread_id) {
             threads.push_back(thread(worker, pre_entropy, ((process_id << thread_bits) | thread_id), (process_bits + thread_bits)));
         }
