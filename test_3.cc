@@ -33,7 +33,7 @@ vector<string> get_wordlist() {
 }
 
 const vector<string> BIP39_WORDLIST = get_wordlist();
-const string pre_words_str = "flame forum kitchen recall child desk time weekend crouch";
+const string pre_words_str = "flame forum kitchen recall child desk time weekend resource";
 const vector<unsigned char> decoded_target_address = DecodeBase58("TGaVQqjm4zxYFkT1SM9P8frBA38jWdZR4D");
 
 
