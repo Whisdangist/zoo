@@ -255,7 +255,7 @@ int worker(__uint128_t pre_entropy, int worker_id, int bits = 3) {
 
 // #define TEST
 
-void solve() {    
+void solve(int process_id = 0) {    
     __uint128_t pre_entropy = 0;
     istringstream words_stream(pre_words_str);
     string word;
@@ -269,9 +269,10 @@ void solve() {
 
     #ifndef TEST
         vector<thread> threads;
-        int num_bits = 4;
-        for (int i = 0; i < (1 << num_bits); ++i) {
-            threads.push_back(thread(worker, pre_entropy, i, num_bits));
+        int process_bits = 1;
+        int thread_bits = 3;
+        for (int thread_id = 0; thread_id < (1 << thread_bits); ++thread_id) {
+            threads.push_back(thread(worker, pre_entropy, ((process_id << thread_bits) | thread_id), (process_bits + thread_bits)));
         }
         for (auto& t : threads) {
             t.join();
@@ -285,11 +286,14 @@ void solve() {
     std::cout << "All threads have completed." << std::endl;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     cout << "Hello, World!" << endl;
 
+    int process_id = atoi(argv[1]);
+    cout << process_id << endl;
+
     auto start = std::chrono::high_resolution_clock::now();    
-    solve();
+    solve(process_id);
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Task executed in " << duration.count() / 1000 << " seconds." << std::endl;
