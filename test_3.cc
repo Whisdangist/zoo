@@ -33,8 +33,8 @@ vector<string> get_wordlist() {
 }
 
 const vector<string> BIP39_WORDLIST = get_wordlist();
-const string pre_words_str = "dentist gauge whisper cattle lemon pink benefit ship subject";
-const vector<unsigned char> decoded_target_address = DecodeBase58("TEyy2fr2xMYwwsZUxmNx7HD4LT9WhEorPP");
+const string pre_words_str = "flame forum kitchen recall child desk time weekend crouch";
+const vector<unsigned char> decoded_target_address = DecodeBase58("TGaVQqjm4zxYFkT1SM9P8frBA38jWdZR4D");
 
 
 vector<unsigned char> int2bytes(__uint128_t entropy) {
